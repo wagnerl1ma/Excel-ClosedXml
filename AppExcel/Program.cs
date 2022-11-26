@@ -14,4 +14,5 @@ Console.WriteLine("Ler e Gerar Excel");
 
 //Ler Arquivo Excel EMail
 //Excel.LerExcelEmail("fdfggfdgf");
-Excel.InserirDadosExcelEmail();
+//Excel.InserirDadosExcelEmail();
+Excel.MergeExcel();

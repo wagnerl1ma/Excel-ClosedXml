@@ -8,8 +8,90 @@ namespace AppExcel
 {
     public static class Excel
     {
+        #region MergeExcel
+
+        public static void MergeExcel()
+        {
+            var listaDadosExcel = new List<DespesasModel>();
+
+            try
+            {
+                //var arquivosExcelLogs = System.IO.Directory.GetFiles("C:\\Users\\Wagner\\Desktop\\POCs\\ExcelClosedXml\\AppExcel\\AppExcel\\Planilhas\\MergePlanilha\\log");
+                //var primeiroArquivo = arquivosExcelLogs[0];
+
+                var caminhoExcelLogs = new DirectoryInfo("C:\\Users\\Wagner\\Desktop\\POCs\\ExcelClosedXml\\AppExcel\\AppExcel\\Planilhas\\MergePlanilha\\log");
+                var arquivosExcelLogs = caminhoExcelLogs.GetFiles().OrderBy(f => f.CreationTime);
+                var primeiroExcelLogCriado = arquivosExcelLogs.OrderByDescending(f => f.CreationTime).LastOrDefault();
+
+                foreach (var excelLog in arquivosExcelLogs)
+                {
+                    listaDadosExcel = PegarListaExcel(excelLog.ToString());
+
+                    if (primeiroExcelLogCriado == excelLog)
+                    {
+                        GerarExcel("Geral", "BaseDoDia", listaDadosExcel);
+                    }
+                    else
+                    {
+                        var caminhoExcelGeral = new DirectoryInfo("C:\\Users\\Wagner\\Desktop\\POCs\\ExcelClosedXml\\AppExcel\\AppExcel\\Planilhas\\MergePlanilha\\geral");
+                        var arquivosExcelGeral = caminhoExcelGeral.GetFiles();
+                        var ultimoArquivoGeralCriado = arquivosExcelGeral.OrderByDescending(f => f.LastWriteTime).FirstOrDefault();
+                        InserirDadosExcel(ultimoArquivoGeralCriado.ToString(), listaDadosExcel);
+                    }
+
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Erro no merge {ex.Message}");
+            }
+            
+        }
+
+        public static void InserirDadosExcel(string caminhoDoArquivo, List<DespesasModel> lstDespesasModels)
+        {
+            //string caminhoDoArquivo = "C:\\Users\\Wagner\\OneDrive\\TesteListaEmail\\ListaEmail.xlsx";
+            try
+            {
+                if (File.Exists(caminhoDoArquivo))
+                {
+                    using (var workbook = new XLWorkbook(caminhoDoArquivo))
+                    {
+                        var abaExcel = workbook.Worksheet("Geral"); //Nome da aba do excel
+
+                        int numeroDaUltimaLinha = abaExcel.LastRowUsed().RowNumber(); // numero da ultima linha do excel que está preenchida
+
+                        foreach (var item in lstDespesasModels)
+                        {
+                            numeroDaUltimaLinha++; // acrescenta mais uma linha depois da ultima para acrescentar novos dados
+
+                            abaExcel.Cell("A" + numeroDaUltimaLinha).Value = item.Id;
+                            abaExcel.Cell("B" + numeroDaUltimaLinha).Value = item.Fornecedor;
+                            abaExcel.Cell("C" + numeroDaUltimaLinha).Value = item.ValorDevido;
+                            abaExcel.Cell("D" + numeroDaUltimaLinha).Value = item.Vencimento;
+                            abaExcel.Cell("E" + numeroDaUltimaLinha).Value = item.Pagamento;
+                            abaExcel.Cell("F" + numeroDaUltimaLinha).Value = item.ValorPago;
+                            abaExcel.Cell("G" + numeroDaUltimaLinha).Value = item.Descricao;
+                        }
+
+                        workbook.SaveAs(caminhoDoArquivo);
+                    }
+                }
+                else
+                {
+                    Console.WriteLine("Lista Vazia");
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"ERRO AO INSERIR DADOS NO EXCEL! {ex.Message}");
+            }
+        }
+
+        #endregion
+
         #region Inserir Dados no Excel formatado como tabela
-        public static void InserirDadosExcelEmail()
+        public static void InserirDadosExcelEmailComTabela()
         {
             string caminhoDoArquivo = "C:\\Users\\Wagner\\OneDrive\\TesteListaEmail\\ListaEmail.xlsx";
             //var listaAtualExcel = LerExcelEmail("");
@@ -89,9 +171,57 @@ namespace AppExcel
 
         }
 
-        public static void LerExcel(string caminho)
+        public static List<DespesasModel> PegarListaExcel(string caminhoDoArquivo)
         {
-            string caminhoDoArquivo = System.IO.Directory.GetCurrentDirectory() + caminho;
+            //string caminhoDoArquivo = System.IO.Directory.GetCurrentDirectory() + caminho;
+
+            if (File.Exists(caminhoDoArquivo))
+            {
+                List<DespesasModel> lista = new List<DespesasModel>();              //criamos uma lista vazia para receber cada linha
+
+                //var workbook = new XLWorkbook(filePathName);  
+                using (var workbook = new XLWorkbook(caminhoDoArquivo)) // abrimos o objeto do tipo XLWorkbook 
+                {
+                    var nonEmptyDataRows = workbook.Worksheet(1).RowsUsed();            // obtem apenas as linhas que foram utilizadas da planilha
+
+                    foreach (var dataRow in nonEmptyDataRows)                           // percorremos linha a linha da planilha
+                    {
+                        if (dataRow.RowNumber() > 1)                                    //obteremos apenas após a linha 1 para não carregar o cabeçalho
+                        {
+                            var despesa = new DespesasModel();                          // criamos um objeto para popular com os valores obtidos da linha
+                            despesa.Id = Convert.ToInt32(dataRow.Cell(1).Value);        // obtemos o valor de cada célula pelo seu nº de coluna
+                            despesa.Fornecedor = dataRow.Cell(2).Value.ToString();
+                            despesa.ValorDevido = Convert.ToDecimal(dataRow.Cell(3).Value);
+                            despesa.Descricao = dataRow.Cell(7).Value.ToString();
+
+                            DateTime.TryParse(dataRow.Cell(4).Value.ToString(), out DateTime dataVencto);
+                            despesa.Vencimento = Convert.ToDateTime(dataVencto.ToString("dd/MM/yyyy")).Date;
+
+                            if (!string.IsNullOrEmpty(dataRow.Cell(5).Value.ToString()))
+                            {
+                                DateTime.TryParse(dataRow.Cell(5).Value.ToString(), out DateTime dataPagto);
+                                despesa.Pagamento = Convert.ToDateTime(dataPagto.ToString("dd/MM/yyyy")).Date;
+                            }
+
+                            if (!string.IsNullOrEmpty(dataRow.Cell(6).Value.ToString()))
+                                despesa.ValorPago = Convert.ToDecimal(dataRow.Cell(6).Value);
+
+                            lista.Add(despesa);                                         // adicionamos o objeto criado à lista
+                        }
+                    }
+
+                    return lista;
+                    //Console.WriteLine(JsonSerializer.Serialize(lista));                 // pronto, exibimos a lista em formato Json
+                }
+            }
+            else
+                Console.WriteLine("Arquivo nao encontrado:" + caminhoDoArquivo);
+            return null;
+        }
+
+        public static void LerExcel(string caminhoDoArquivo)
+        {
+            //string caminhoDoArquivo = System.IO.Directory.GetCurrentDirectory() + caminho;
 
             if (File.Exists(caminhoDoArquivo))
             {
@@ -140,7 +270,8 @@ namespace AppExcel
             var nomeArquivoAtualizado = nomeDoArquivo.Replace(" ", "").Trim() + "_" + DateTime.Now.ToString().Replace('/', '-').Replace(" ", "-").Replace(":", "-").Trim() + ".xlsx";
 
             //string caminhoDoArquivo = System.IO.Directory.GetCurrentDirectory() + "\\" + nomeDoArquivo;
-            string caminhoDoArquivo = "C:\\Users\\Wagner\\Desktop\\Gerar e Ler Excel\\AppExcel\\AppExcel\\Planilhas\\" + nomeArquivoAtualizado;
+            //string caminhoDoArquivo = "C:\\Users\\Wagner\\Desktop\\Gerar e Ler Excel\\AppExcel\\AppExcel\\Planilhas\\" + nomeArquivoAtualizado;
+            string caminhoDoArquivo = "C:\\Users\\Wagner\\Desktop\\POCs\\ExcelClosedXml\\AppExcel\\AppExcel\\Planilhas\\MergePlanilha\\geral\\" + nomeArquivoAtualizado;
 
             if (File.Exists(caminhoDoArquivo))
                 File.Delete(caminhoDoArquivo);
