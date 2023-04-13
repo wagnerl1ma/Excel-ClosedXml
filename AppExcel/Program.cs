@@ -1,4 +1,5 @@
 ﻿// See https://aka.ms/new-console-template for more information
+
 using AppExcel;
 
 Console.WriteLine("Ler e Gerar Excel");

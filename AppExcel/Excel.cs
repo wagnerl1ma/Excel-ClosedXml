@@ -45,7 +45,7 @@ namespace AppExcel
             {
                 Console.WriteLine($"Erro no merge {ex.Message}");
             }
-            
+
         }
 
         public static void InserirDadosExcel(string caminhoDoArquivo, List<DespesasModel> lstDespesasModels)
@@ -90,15 +90,12 @@ namespace AppExcel
 
         #endregion
 
-        #region Inserir Dados no Excel formatado como tabela
+        #region Inserir Dados no Excel formatado de tabela
         public static void InserirDadosExcelEmailComTabela()
         {
             string caminhoDoArquivo = "C:\\Users\\Wagner\\OneDrive\\TesteListaEmail\\ListaEmail.xlsx";
-            //var listaAtualExcel = LerExcelEmail("");
-
             try
             {
-                //if (listaAtualExcel != null)
                 if (File.Exists(caminhoDoArquivo))
                 {
                     using (var workbook = new XLWorkbook(caminhoDoArquivo))
